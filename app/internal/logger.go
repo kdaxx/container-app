@@ -93,8 +93,8 @@ func (appLogger *AppLogger) configLogger() error {
 		Compress:           false,      // disabled by default
 	}
 	// output to stdout and appLogger file
-	appLogger.logger.SetOutput(io.MultiWriter(os.Stdout, appLogger.rotate))
-
+	writer := io.MultiWriter(os.Stdout, appLogger.rotate)
+	appLogger.logger.SetOutput(writer)
 	return nil
 }
 

@@ -6,8 +6,8 @@ import (
 	"github.com/kdaxx/container-app/app/api"
 	api2 "github.com/kdaxx/container/v2/api"
 	"github.com/kdaxx/container/v2/container"
+	"github.com/sirupsen/logrus"
 	"go.uber.org/multierr"
-	"log"
 	"os"
 	"os/signal"
 	"reflect"
@@ -18,11 +18,25 @@ import (
 
 var c = container.NewContainer()
 
+var cancel context.CancelFunc
+
+var lock sync.Mutex
+
 func Enable(modules []api2.BeanRegistrar) {
 	c.ApplyRegistrars(modules)
 }
 
 func RunApplication() error {
+	ctx, cc := context.WithCancel(context.Background())
+	lock.Lock()
+	cancel = cc
+	lock.Unlock()
+	defer func() {
+		cc()
+		lock.Lock()
+		cancel = nil
+		lock.Unlock()
+	}()
 
 	err := applyBeforeAppRunProcessors()
 	if err != nil {
@@ -37,9 +51,18 @@ func RunApplication() error {
 	if err != nil {
 		return err
 	}
+	logrus.Printf("app started")
 
-	return applyBeforeAppStopProcessors()
+	return applyBeforeAppStopProcessors(ctx)
 
+}
+
+func StopApplication() {
+	lock.Lock()
+	if cancel != nil {
+		cancel()
+	}
+	lock.Unlock()
 }
 
 func applyBeforeAppRunProcessors() error {
@@ -66,13 +89,20 @@ func applyInitializers() error {
 	return nil
 }
 
-func applyBeforeAppStopProcessors() error {
+func applyBeforeAppStopProcessors(ctx context.Context) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	select {
+	case <-quit:
+	case <-ctx.Done():
+	}
 
+	return stopApp()
+}
+
+func stopApp() error {
 	var wait = 5
-	log.Printf("app will be stopped in %d seconds\n", wait)
+	logrus.Printf("app will be stopped in %d seconds\n", wait)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
