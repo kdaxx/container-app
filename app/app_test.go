@@ -8,7 +8,7 @@ import (
 
 func TestRunApplication(t *testing.T) {
 	Enable([]api.BeanRegistrar{
-		&Registrar{},
+		NewRegistrar(),
 	})
 
 	go func() {

@@ -18,3 +18,7 @@ func (r *Registrar) RegisterBeans(beanRegister api.BeanRegister) {
 		internal.NewAppConfigInjector(),
 	})
 }
+
+func NewRegistrar() *Registrar {
+	return &Registrar{}
+}
