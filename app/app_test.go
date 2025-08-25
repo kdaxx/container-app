@@ -20,3 +20,7 @@ func TestRunApplication(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	StopApplication()
 }
+
+func TestVersion(t *testing.T) {
+	t.Log(api.VERSION)
+}
